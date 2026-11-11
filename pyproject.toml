@@ -8,6 +8,8 @@ version = "0.1.0"
 description = "Answers car safety questions from NHTSA complaints and recalls, with citations, and abstains when the evidence is weak."
 requires-python = ">=3.12"
 dependencies = [
+    "fastembed>=0.9.1",
+    "pgvector>=0.5.1",
     "psycopg[binary]>=3.3.8",
     "pydantic-settings>=2.16.2",
 ]
@@ -35,3 +37,7 @@ select = ["E", "F", "I", "B", "UP"]
 files = ["src"]
 strict = true
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["pgvector.*"]
+ignore_missing_imports = true
