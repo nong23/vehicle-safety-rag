@@ -10,6 +10,8 @@ import psycopg
 from pgvector import Vector
 from pgvector.psycopg import register_vector
 
+from vsrag.embed import embed_query
+
 
 @dataclass(frozen=True)
 class SearchFilters:
@@ -124,3 +126,59 @@ def vector_search(
     ).fetchall()
     # row[1] is the distance; similarity = 1 - distance, so closer = higher
     return [SearchHit(row[0], index, 1 - row[1]) for index, row in enumerate(rows, start=1)]
+
+
+# --- Task 5: merge keyword and vector results with Reciprocal Rank Fusion (RRF) ---
+
+# How many results each search fetches before fusing. More than k, so a document ranked
+# low in one list but high in the other still gets a chance.
+CANDIDATES_PER_SEARCH = 50
+
+
+@dataclass(frozen=True)
+class FusedHit:
+    document_id: str
+    score: float  # RRF score: sum of 1 / (rrf_k + rank) over every list the document is in
+    similarity: float | None  # best vector similarity seen; None if only keyword search found it
+
+
+def reciprocal_rank_fusion(result_lists: list[list[SearchHit]], rrf_k: int = 60) -> list[FusedHit]:
+    """Merge ranked lists into one, best first. Ties go to the smaller document_id."""
+    # Task 5: Nathan writes this.
+    scores: dict[str, float] = {}
+    similarities: dict[str, float] = {}
+
+    for hits in result_lists:  # each list (keyword, vector)
+        for hit in hits:  # each hit in that list
+            # running total + this list's 1 / (rrf_k + rank)
+            scores[hit.document_id] = scores.get(hit.document_id, 0) + 1 / (rrf_k + hit.rank)
+            if hit.similarity is not None:
+                # keep the larger of old and new
+                similarities[hit.document_id] = max(
+                    similarities.get(hit.document_id, -1.0), hit.similarity
+                )
+    # the negation (-scores[doc_id]) sorts in descending order of score
+    # highest score first and the ties are broken by document_id
+    order = sorted(scores, key=lambda doc_id: (-scores[doc_id], doc_id))
+    return [FusedHit(doc_id, scores[doc_id], similarities.get(doc_id, None)) for doc_id in order]
+
+
+def hybrid_search(
+    conn: psycopg.Connection, query: str, variant: str, filters: SearchFilters, k: int
+) -> list[FusedHit]:
+    """Run keyword and vector search, merge them with RRF, and return the top k."""
+    # Task 5: Nathan writes this.
+    # Fetch more than k from each search: a document ranked low in one list but high in
+    # the other can still make the final top k.
+    keyword_results = keyword_search(conn, query, filters, CANDIDATES_PER_SEARCH)
+
+    # The question must be embedded with the same model as the documents (the variant),
+    # or the distances are meaningless.
+    vector_results = vector_search(
+        conn, embed_query(query, variant), variant, filters, CANDIDATES_PER_SEARCH
+    )
+    # RRF uses ranks, not scores: ts_rank and cosine similarity aren't on the same scale.
+    fused_results = reciprocal_rank_fusion([keyword_results, vector_results])
+
+    # Only the top k go on to the LLM (Task 6). Returns only the top k results
+    return fused_results[:k]
