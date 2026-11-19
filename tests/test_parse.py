@@ -93,6 +93,18 @@ def test_reads_the_zip_nhtsa_publishes(tmp_path: Path) -> None:
     assert [doc.id for doc in parse_complaints(archive)] == ["complaint:11000001"]
 
 
+def test_text_is_read_as_utf8(tmp_path: Path) -> None:
+    # NHTSA's files are UTF-8. Reading them as latin-1 turned "I’m" into "Iâ\x80\x99m".
+    text = "I’m told the “airbag” light is on – 50°F outside."
+    txt = write_rows(tmp_path / "c.txt", [complaint_row(CDESCR=text)])
+    archive = tmp_path / "c.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.write(txt, "COMPLAINTS.txt")
+
+    assert [doc.body for doc in parse_complaints(txt)] == [text]
+    assert [doc.body for doc in parse_complaints(archive)] == [text]
+
+
 def test_recall_rows_for_one_campaign_become_one_document(tmp_path: Path) -> None:
     path = write_rows(
         tmp_path / "r.txt",

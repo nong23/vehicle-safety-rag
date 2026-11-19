@@ -1,6 +1,6 @@
 """Turn NHTSA's raw complaint and recall files into documents ready to load.
 
-The files are tab-separated, have no header row, and are encoded as latin-1. Columns are
+The files are tab-separated, have no header row, and are encoded as UTF-8. Columns are
 read by position, using NHTSA's field lists:
 https://static.nhtsa.gov/odi/ffdd/cmpl/CMPL.txt and https://static.nhtsa.gov/odi/ffdd/rcl/RCL.txt
 """
@@ -133,9 +133,9 @@ def _rows(path: Path, column_count: int) -> Iterator[list[str]]:
     """Yield rows with the expected number of columns from a .txt file or a .zip holding one."""
     if path.suffix.lower() == ".zip":
         with zipfile.ZipFile(path) as archive, archive.open(archive.namelist()[0]) as raw:
-            yield from _read(io.TextIOWrapper(raw, encoding="latin-1", newline=""), column_count)
+            yield from _read(io.TextIOWrapper(raw, encoding="utf-8", newline=""), column_count)
     else:
-        with path.open(encoding="latin-1", newline="") as text:
+        with path.open(encoding="utf-8", newline="") as text:
             yield from _read(text, column_count)
 
 
