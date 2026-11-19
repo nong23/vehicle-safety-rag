@@ -88,6 +88,6 @@ def recall_row(**fields: str) -> list[str]:
 
 
 def write_rows(path: Path, rows: list[list[str]]) -> Path:
-    """Write rows the way NHTSA does: tab-separated, no header, latin-1."""
-    path.write_text("".join("\t".join(row) + "\r\n" for row in rows), encoding="latin-1")
+    """Write rows the way NHTSA does: tab-separated, no header, UTF-8."""
+    path.write_text("".join("\t".join(row) + "\r\n" for row in rows), encoding="utf-8")
     return path
