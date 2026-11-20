@@ -1,0 +1,46 @@
+{# Swapped into the page's #result box. Jinja escapes every {{ value }}, so document text
+   can't inject HTML. #}
+{% if error %}
+  <div class="notice error" role="alert">{{ error }}</div>
+{% elif result.status == "abstained" %}
+  <div class="notice abstain"><strong>Not enough evidence.</strong> {{ message }}</div>
+{% else %}
+  <ol class="claims">
+    {% for claim in result.claims %}
+      <li>{{ claim.text }}
+        {%- for doc_id in claim.document_ids %}<a class="cite" href="#source-{{ numbers[doc_id] }}">[{{ numbers[doc_id] }}]</a>{% endfor %}
+      </li>
+    {% endfor %}
+  </ol>
+
+  <h2 class="muted">Sources</h2>
+  <ol class="sources">
+    {% for doc in result.documents %}
+      <li id="source-{{ loop.index }}">
+        <details>
+          <summary><span class="tag {{ doc.source }}">{{ labels[doc.source] }}</span>
+            {{ doc.title }} <span class="muted">{{ doc.id }}</span></summary>
+          <p class="body">{{ doc.body }}</p>
+        </details>
+      </li>
+    {% endfor %}
+  </ol>
+{% endif %}
+
+{% if result %}
+  <details class="trace muted">
+    <summary>How this was answered</summary>
+    <ul>
+      {% if result.trace.filters %}<li>Filters: {{ result.trace.filters }}</li>{% endif %}
+      {% if result.trace.top_similarity is not none %}
+        <li>Best match similarity: {{ "%.2f"|format(result.trace.top_similarity) }}</li>
+      {% endif %}
+      {% if result.trace.verdicts %}
+        <li>Claims supported by the judge: {{ result.trace.verdicts|select|list|length }} of {{ result.trace.verdicts|length }}</li>
+      {% endif %}
+      {% for step, seconds in result.trace.seconds.items() %}
+        <li>{{ step }}: {{ "%.1f"|format(seconds) }} s</li>
+      {% endfor %}
+    </ul>
+  </details>
+{% endif %}

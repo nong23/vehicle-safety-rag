@@ -5,7 +5,11 @@ import pytest
 from psycopg import sql
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
 
+from tests.sample_docs import DOCUMENTS, VARIANT
 from vsrag.config import settings
+from vsrag.db import init_schema
+from vsrag.embed import embed_missing
+from vsrag.ingest.load import load_documents
 
 
 @pytest.fixture(scope="session")
@@ -30,3 +34,12 @@ def conn(test_db_url: str) -> Iterator[psycopg.Connection]:
     with psycopg.connect(test_db_url) as conn:
         yield conn
         conn.rollback()
+
+
+@pytest.fixture
+def docs(conn: psycopg.Connection) -> psycopg.Connection:
+    """The test database with the 4 documents in tests/sample_docs.py, embedded with VARIANT."""
+    init_schema(conn)
+    load_documents(conn, DOCUMENTS)
+    embed_missing(conn, VARIANT)
+    return conn

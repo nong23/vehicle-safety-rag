@@ -7,14 +7,15 @@ from typing import Any
 
 import pytest
 
-from vsrag.llm import LLMOutputError, OllamaLLM
+from vsrag.llm import LLMOutputError, LLMUnavailableError, OllamaLLM
 
 
 class FakeServer:
     """Replaces urllib's urlopen: records requests and plays back responses in order."""
 
-    def __init__(self, *responses: str | int) -> None:
-        self.responses = list(responses)  # a str is a reply's content; an int is an HTTP error
+    def __init__(self, *responses: str | int | OSError) -> None:
+        # a str is a reply's content; an int is an HTTP error; an OSError is a network failure
+        self.responses = list(responses)
         self.requests: list[dict[str, Any]] = []
 
     def urlopen(self, request: urllib.request.Request, timeout: float) -> io.BytesIO:
@@ -23,6 +24,8 @@ class FakeServer:
         response = self.responses.pop(0)
         if isinstance(response, int):
             raise urllib.error.HTTPError(request.full_url, response, "error", Message(), None)
+        if isinstance(response, OSError):
+            raise response
         return io.BytesIO(json.dumps({"message": {"content": response}}).encode())
 
 
@@ -73,16 +76,28 @@ def test_server_error_is_retried_once(server: FakeServer) -> None:
     assert len(server.requests) == 2
 
 
-def test_second_server_error_is_raised(server: FakeServer) -> None:
+def test_second_server_error_means_unavailable(server: FakeServer) -> None:
     server.responses = [500, 500]
 
-    with pytest.raises(urllib.error.HTTPError):
+    with pytest.raises(LLMUnavailableError):
         OllamaLLM("http://ollama.test").chat_json("m", "s", "u")
 
 
 def test_client_error_is_not_retried(server: FakeServer) -> None:
     server.responses = [404]  # e.g. the model isn't installed: retrying won't help
 
-    with pytest.raises(urllib.error.HTTPError):
+    with pytest.raises(LLMUnavailableError):
         OllamaLLM("http://ollama.test").chat_json("m", "s", "u")
     assert len(server.requests) == 1
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [urllib.error.URLError(ConnectionRefusedError()), TimeoutError("timed out")],
+    ids=["not running", "too slow"],
+)
+def test_unreachable_ollama_means_unavailable(server: FakeServer, failure: OSError) -> None:
+    server.responses = [failure]
+
+    with pytest.raises(LLMUnavailableError):
+        OllamaLLM("http://ollama.test").chat_json("m", "s", "u")

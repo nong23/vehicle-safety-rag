@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vehicle Safety RAG</title>
+  <!-- Swap in error responses (422, 503) too, so their messages show on the page. -->
+  <meta name="htmx-config" content='{"responseHandling": [{"code": "204", "swap": false}, {"code": "...", "swap": true}]}'>
+  <script src="/static/htmx.min.js" defer></script>
+  <style>
+    :root { --bg: #ffffff; --fg: #1a1a1a; --muted: #5f6368; --line: #dadce0; --accent: #1a56db;
+            --warn-bg: #fff8e1; --err-bg: #fdecea; --tag-c: #8a5a00; --tag-r: #0b6b3a; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #16181c; --fg: #e8eaed; --muted: #9aa0a6; --line: #3c4043; --accent: #8ab4f8;
+              --warn-bg: #3a3320; --err-bg: #3c2523; --tag-c: #f2c46d; --tag-r: #81c995; }
+    }
+    body { margin: 0 auto; max-width: 46rem; padding: 2rem 1rem; background: var(--bg);
+           color: var(--fg); font: 16px/1.55 system-ui, sans-serif; }
+    h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+    .muted { color: var(--muted); font-size: .9rem; }
+    textarea { width: 100%; box-sizing: border-box; min-height: 5rem; padding: .6rem; font: inherit;
+               background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; }
+    button { margin-top: .5rem; padding: .5rem 1.1rem; font: inherit; border: 0; border-radius: 6px;
+             background: var(--accent); color: var(--bg); cursor: pointer; }
+    button:disabled { opacity: .5; cursor: wait; }
+    #thinking { margin-left: .75rem; }
+    .notice { padding: .75rem 1rem; border-radius: 6px; margin: 1.25rem 0; }
+    .abstain { background: var(--warn-bg); }
+    .error { background: var(--err-bg); }
+    .claims li { margin: .4rem 0; }
+    .cite { text-decoration: none; font-size: .8rem; vertical-align: super; margin-left: .1rem; }
+    .sources { padding-left: 1.25rem; }
+    .sources li { margin: .5rem 0; }
+    .tag { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+    .tag.complaint { color: var(--tag-c); }
+    .tag.recall { color: var(--tag-r); }
+    .body { white-space: pre-wrap; margin: .5rem 0 0; }
+    details.trace { margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Vehicle Safety RAG</h1>
+  <p class="muted">Ask about safety problems with 2018–2023 Ford, Honda, Toyota, Hyundai and Kia
+    vehicles. Answers come only from NHTSA complaints and recalls, with sources. If the records
+    don't support an answer, it says so.</p>
+
+  <form hx-post="/ask" hx-target="#result" hx-indicator="#thinking" hx-disabled-elt="find button">
+    <textarea name="question" maxlength="{{ max_chars }}" required
+              placeholder="e.g. Do airbags fail to deploy in the Kia Telluride?"></textarea>
+    <button type="submit">Ask</button>
+    <span id="thinking" class="htmx-indicator muted">Searching and checking sources… usually 10–30 seconds</span>
+  </form>
+
+  <div id="result" aria-live="polite"></div>
+</body>
+</html>
