@@ -31,7 +31,7 @@ def retrieval_gate(hits: list[FusedHit], min_similarity: float) -> GateResult:
     similarities = [hit.similarity for hit in hits if hit.similarity is not None]
     top = max(similarities, default=None)  # None if no hit had one
     # passed = there's a top AND it's >= min_similarity
-    # "and" stops early, so top >= min_similarity 
+    # "and" stops early, so top >= min_similarity
     # never runs when top is None (that comparison crashes).
     return GateResult(top is not None and top >= min_similarity, top)
 
