@@ -15,6 +15,7 @@ from vsrag.config import settings
 CONTEXT_TOKENS = 4096  # 5 documents are ~600 tokens, so this leaves plenty of room
 KEEP_ALIVE = "30m"  # keep the model loaded between questions; reloading costs ~10 s
 TIMEOUT_SECONDS = 600  # the first request after a reboot took ~2 minutes (measured)
+MAX_ATTEMPTS = 3  # for server errors (5xx); see _post
 RETRY_WAIT_SECONDS = 2
 
 
@@ -66,16 +67,18 @@ class OllamaLLM:
             headers={"Content-Type": "application/json"},
         )
         try:
-            try:
-                return _send(request)
-            except urllib.error.HTTPError as error:
-                # 5xx = the server failed (measured: the first long request after loading
-                # the model returned 500 once). 4xx = our request is wrong (e.g. the model
-                # isn't installed), so retrying won't help.
-                if error.code < 500:
-                    raise
-                time.sleep(RETRY_WAIT_SECONDS)
-                return _send(request)
+            for attempt in range(1, MAX_ATTEMPTS + 1):
+                try:
+                    return _send(request)
+                except urllib.error.HTTPError as error:
+                    # 5xx = the server failed, and may work next time. Measured: on its first
+                    # model load after starting, Ollama's GPU setup crashed twice ("CUDA error:
+                    # shared object initialization failed") and worked on the 3rd try.
+                    # 4xx = our request is wrong (e.g. the model isn't installed): no retry.
+                    if error.code < 500 or attempt == MAX_ATTEMPTS:
+                        raise
+                    time.sleep(RETRY_WAIT_SECONDS)
+            raise AssertionError("unreachable: the loop returns or raises")
         except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
             # One error type for "no usable reply", so the page can show one clear message.
             # (HTTPError is a kind of URLError, so it lands here too.)

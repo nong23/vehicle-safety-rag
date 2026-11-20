@@ -74,4 +74,3 @@ def test_uses_the_judge_model() -> None:
     judge_claim(CLAIM, [STALL], llm)
 
     assert llm.calls[0].model == settings.judge_model
-    assert llm.calls[0].model != settings.answer_model  # a different model checks the work

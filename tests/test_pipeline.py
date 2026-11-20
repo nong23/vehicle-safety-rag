@@ -4,7 +4,7 @@ import psycopg
 
 from tests.fake_llm import FakeLLM
 from tests.sample_docs import BRAKES, STALL
-from vsrag.config import settings
+from vsrag.judge import JUDGE_PROMPT
 from vsrag.pipeline import PipelineConfig, ask
 from vsrag.search import SearchFilters
 
@@ -21,7 +21,8 @@ def scripted(claims: list[dict[str, Any]], supported: set[str] | None = None) ->
     `supported` (all of them if None)."""
 
     def reply(model: str, system: str, user: str) -> dict[str, Any]:
-        if model == settings.answer_model:
+        # Tell the two roles apart by their instructions: both may use the same model.
+        if system != JUDGE_PROMPT:
             return {"claims": claims}
         claim_text = user.rsplit("Claim: ", 1)[1]
         return {"supported": supported is None or claim_text in supported}

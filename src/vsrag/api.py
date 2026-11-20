@@ -4,6 +4,7 @@ Run it from the project folder with:  uvicorn vsrag.api:app
 then open http://127.0.0.1:8000
 """
 
+import logging
 import urllib.request
 from collections.abc import Callable
 from pathlib import Path
@@ -23,6 +24,7 @@ from vsrag.scope import known_models
 from vsrag.search import SearchFilters
 
 HERE = Path(__file__).parent
+logger = logging.getLogger(__name__)
 MAX_QUESTION_CHARS = 500
 
 SOURCE_LABELS = {"complaint": "Owner complaint (unverified)", "recall": "Official recall"}
@@ -66,7 +68,8 @@ def create_app(ask_question: AskQuestion | None = None) -> FastAPI:
             return result_page(request, 422, error=EMPTY_OR_LONG)
         try:
             result = answer_question(question)
-        except LLMUnavailableError:
+        except LLMUnavailableError as error:
+            logger.error("Ollama unavailable: %s", error)  # the details, for the server console
             return result_page(request, 503, error=OLLAMA_DOWN)
         message = result.message or ABSTAIN_MESSAGES.get(result.abstain_reason or "")
         numbers = {doc.id: n for n, doc in enumerate(result.documents, start=1)}
