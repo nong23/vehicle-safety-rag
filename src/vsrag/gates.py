@@ -31,7 +31,8 @@ def retrieval_gate(hits: list[FusedHit], min_similarity: float) -> GateResult:
     similarities = [hit.similarity for hit in hits if hit.similarity is not None]
     top = max(similarities, default=None)  # None if no hit had one
     # passed = there's a top AND it's >= min_similarity
-    # "and" stops early, so top >= min_similarity never runs when top is None (that comparison crashes).
+    # "and" stops early, so top >= min_similarity 
+    # never runs when top is None (that comparison crashes).
     return GateResult(top is not None and top >= min_similarity, top)
 
 
@@ -42,7 +43,8 @@ def claim_gate(
     kept (kept / all claims) is at least `min_supported_ratio`."""
     # Task 7: Nathan writes this.
     # keep the claims whose verdict is True
-    # strict=True: a missing verdict raises an error instead of silently skipping a claim, causing a bug.
+    # strict=True: a missing verdict raises an error instead of silently skipping a claim.
+    # this was a silent bug
     kept = tuple(claim for claim, verdict in zip(claims, verdicts, strict=True) if verdict)
     # at least one claim kept AND (kept / all claims) >= min_supported_ratio
     # Abstain if too few claims check out: if most were made up, the rest are suspect too.
