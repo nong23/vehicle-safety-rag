@@ -55,11 +55,11 @@ def generate_answer(
 
 
 def build_prompt(question: str, documents: list[Document]) -> str:
-    blocks = "\n\n".join(_document_block(doc) for doc in documents)
+    blocks = "\n\n".join(document_block(doc) for doc in documents)
     return f"Documents:\n\n{blocks}\n\nQuestion: {question}\n\n{REPLY_SHAPE}"
 
 
-def _document_block(doc: Document) -> str:
+def document_block(doc: Document) -> str:
     # Remove any <document> or </document> inside the text, so a document can't end its
     # own block early and pass the rest off as instructions (prompt injection).
     text = re.sub(r"</?document\b[^>]*>", "", f"{doc.title}\n{doc.body}", flags=re.IGNORECASE)
