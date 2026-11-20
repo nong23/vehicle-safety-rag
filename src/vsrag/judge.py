@@ -1,7 +1,8 @@
 """Check each claim against the documents it cites, using a second LLM as the judge.
 
-The judge is llama3.1, a different model family from the answer model (qwen3): models
-tend to rate their own writing too kindly ("self-preference bias").
+The judge model is a setting (settings.judge_model). It is qwen3:8b, the same model that
+writes the answers, for speed; models can rate their own writing too kindly
+("self-preference bias"), so Task 11 checks it against llama3.1:8b and hand labels.
 """
 
 import re

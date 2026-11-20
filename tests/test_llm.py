@@ -69,18 +69,19 @@ def test_reply_that_is_not_a_json_object_raises(server: FakeServer, content: str
         OllamaLLM("http://ollama.test").chat_json("m", "s", "u")
 
 
-def test_server_error_is_retried_once(server: FakeServer) -> None:
-    server.responses = [500, '{"answer": "hi"}']
+def test_server_errors_are_retried_up_to_3_attempts(server: FakeServer) -> None:
+    server.responses = [500, 500, '{"answer": "hi"}']  # as on Ollama's first GPU load
 
     assert OllamaLLM("http://ollama.test").chat_json("m", "s", "u") == {"answer": "hi"}
-    assert len(server.requests) == 2
+    assert len(server.requests) == 3
 
 
-def test_second_server_error_means_unavailable(server: FakeServer) -> None:
-    server.responses = [500, 500]
+def test_third_server_error_means_unavailable(server: FakeServer) -> None:
+    server.responses = [500, 500, 500]
 
     with pytest.raises(LLMUnavailableError):
         OllamaLLM("http://ollama.test").chat_json("m", "s", "u")
+    assert len(server.requests) == 3
 
 
 def test_client_error_is_not_retried(server: FakeServer) -> None:
