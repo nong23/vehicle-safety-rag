@@ -22,6 +22,10 @@ class LLMOutputError(Exception):
     """The model's reply wasn't the JSON object we asked for."""
 
 
+class LLMUnavailableError(Exception):
+    """Ollama couldn't give a reply: not running, too slow, model missing, or failing."""
+
+
 class LLM(Protocol):
     def chat_json(self, model: str, system: str, user: str) -> dict[str, Any]:
         """Send one system and one user message; return the reply as a JSON object."""
@@ -62,14 +66,20 @@ class OllamaLLM:
             headers={"Content-Type": "application/json"},
         )
         try:
-            return _send(request)
-        except urllib.error.HTTPError as error:
-            # 5xx = the server failed (measured: the first long request after loading the
-            # model returned 500 once). 4xx = our request is wrong, so retrying won't help.
-            if error.code < 500:
-                raise
-            time.sleep(RETRY_WAIT_SECONDS)
-            return _send(request)
+            try:
+                return _send(request)
+            except urllib.error.HTTPError as error:
+                # 5xx = the server failed (measured: the first long request after loading
+                # the model returned 500 once). 4xx = our request is wrong (e.g. the model
+                # isn't installed), so retrying won't help.
+                if error.code < 500:
+                    raise
+                time.sleep(RETRY_WAIT_SECONDS)
+                return _send(request)
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
+            # One error type for "no usable reply", so the page can show one clear message.
+            # (HTTPError is a kind of URLError, so it lands here too.)
+            raise LLMUnavailableError(f"Ollama at {self.url} failed: {error}") from error
 
 
 def _send(request: urllib.request.Request) -> dict[str, Any]:
