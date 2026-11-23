@@ -221,3 +221,7 @@ __marimo__/
 
 # Downloaded NHTSA files (re-created by the ingest step)
 data/
+
+# Test-set drafting: AI drafts and rejected questions stay out of the repo
+evals/golden_draft.jsonl
+evals/golden_rejected.jsonl
