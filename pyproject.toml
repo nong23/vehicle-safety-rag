@@ -39,7 +39,7 @@ line-length = 100
 select = ["E", "F", "I", "B", "UP"]
 
 [tool.mypy]
-files = ["src"]
+files = ["src", "evals"]
 strict = true
 plugins = ["pydantic.mypy"]
 
